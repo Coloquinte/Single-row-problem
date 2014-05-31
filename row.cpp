@@ -23,7 +23,6 @@ class fixed_order_row{
 	int current_width;
 	int begin, end;
 
-
 	public:
     size_t size() const{
 		assert(widths.size() == place_time_positions.size());
@@ -47,34 +46,69 @@ class fixed_order_row{
 		int new_width = current_width + cell_width;
         int current_slope = cell_right_slope;
 
+        std::vector<bound> sorted_bounds;
+
         for(int i=0; i<cell_bounds_pos.size(); ++i){
-            if(cell_bounds_pos[i] > begin + current_width){
-                bounds.push( bound(cell_bounds_pos[i] - current_width, cell_slope_changes[i]) );
-            }
+            sorted_bounds.push_back( bound(cell_bounds_pos[i] - current_width, cell_slope_changes[i]) );
         }
+        std::sort(sorted_bounds.begin(), sorted_bounds.end());
  
         int last_admissible_position = end - new_width;
 
-        // Remove the out-of-range bounds
-        while(not bounds.empty() && bounds.top().absolute_position > last_admissible_position){
-            current_slope -= bounds.top().slope_change;
-            bounds.pop();
+        while(true){
+            if(bounds.empty() && sorted_bounds.empty()){
+                break;
+            }
+            else if(bounds.empty() || (not sorted_bounds.empty() && bounds.top() < sorted_bounds.back()) ){ // Greatest in the vector
+                if(sorted_bounds.back().absolute_position <= last_admissible_position){
+                    break;
+                }
+                else{
+                    current_slope -= sorted_bounds.back().slope_change;
+                    sorted_bounds.pop_back();
+                }
+            }
+            else{ // Greatest in the queue
+                if(bounds.top().absolute_position <= last_admissible_position){
+                    break;
+                }
+                else{
+                    current_slope -= bounds.top().slope_change;
+                    bounds.pop();
+                }
+            } 
         }
 
         int last_bound = last_admissible_position;
 
-        // Remove the bounds in order until we reach the non-equilibrium point
-        while(not bounds.empty() && current_slope > 0){
-            current_slope -= bounds.top().slope_change;
-            last_bound = bounds.top().absolute_position;
-            bounds.pop();
+        while(true){
+            if(current_slope <= 0){
+                break;
+            }
+            if(bounds.empty() && sorted_bounds.empty()){
+                break;
+            }
+            else if(bounds.empty() || (not sorted_bounds.empty() && bounds.top() < sorted_bounds.back()) ){
+                last_bound = sorted_bounds.back().absolute_position;
+                current_slope -= sorted_bounds.back().slope_change;
+                sorted_bounds.pop_back();
+            }
+            else{
+                last_bound = bounds.top().absolute_position;
+                current_slope -= bounds.top().slope_change;
+                bounds.pop();
+            } 
         }
 
-        if(current_slope > 0){ // No bound left, left packed placement
+        if(current_slope > 0 || last_bound < begin){ // No bound left or passed the leftmost legal position, left packed placement
             last_bound = begin;
         }
-        else if(current_slope < 0){ // The last bound wasn't entirely consumed or the placement is right-packed
+        else{ //if(current_slope < 0) in the old version if the last bound wasn't entirely consumed or the placement is right-packed. If not, this doesn't add complexity
             bounds.push( bound(last_bound, -current_slope) );
+        }
+
+        for(auto b : sorted_bounds){
+            bounds.push(b);
         }
 
         current_width = new_width;
@@ -98,7 +132,6 @@ class fixed_order_row{
         }
 		return ret;
     }
-
 };
 
 
