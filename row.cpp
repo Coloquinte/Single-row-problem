@@ -48,9 +48,7 @@ class fixed_order_row{
         int current_slope = cell_right_slope;
 
         for(int i=0; i<cell_bounds_pos.size(); ++i){
-            if(cell_bounds_pos[i] > begin + current_width){
-                bounds.push( bound(cell_bounds_pos[i] - current_width, cell_slope_changes[i]) );
-            }
+            bounds.push( bound(cell_bounds_pos[i] - current_width, cell_slope_changes[i]) );
         }
  
         int last_admissible_position = end - new_width;
@@ -63,14 +61,14 @@ class fixed_order_row{
 
         int last_bound = last_admissible_position;
 
-        // Remove the bounds in order until we reach the non-equilibrium point
+        // Remove the bounds in order until we reach the equilibrium point
         while(not bounds.empty() && current_slope > 0){
             current_slope -= bounds.top().slope_change;
             last_bound = bounds.top().absolute_position;
             bounds.pop();
         }
 
-        if(current_slope > 0){ // No bound left, left packed placement
+        if(current_slope > 0 or last_bound < begin){ // No bound left, left packed placement
             last_bound = begin;
         }
         else if(current_slope < 0){ // The last bound wasn't entirely consumed or the placement is right-packed
